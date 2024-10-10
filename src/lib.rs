@@ -1,3 +1,4 @@
+use ordered_float::OrderedFloat;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -28,11 +29,15 @@ pub fn agarwal(p: Vec<Point>, q: Vec<Point>) -> Transform {
     let n = q.len();
     let mut q_boundaries = vec![];
     for j in 0..n {
+        // Solve linear equation system:
+        //   x1 a + y1 b = 1
+        //   x2 a + y2 b = 1
         let Point { x: x1, y: y1 } = q[j];
         let Point { x: x2, y: y2 } = q[(j + 1) % n];
         let d = x1 * y2 - x2 * y1;
         q_boundaries.push(((y2 - y1) / d, (x1 - x2) / d))
     }
+    println!("{:?}", q_boundaries);
     let mut g = vec![];
     for j in 0..n {
         let mut gj = vec![];
@@ -43,12 +48,13 @@ pub fn agarwal(p: Vec<Point>, q: Vec<Point>) -> Transform {
         }
         g.push((gj, (aj, bj)));
     }
+    println!("{:?}", &g);
 
     let mut vertices = vec![];
-    for j1 in 0..n {
-        let (a1, b1) = g[j1].1;
-        for j2 in 0..n {
-            let (a2, b2) = g[j2].1;
+    for j2 in 1..n {
+        let (a2, b2) = g[j2].1;
+        for j1 in 0..j2 {
+            let (a1, b1) = g[j1].1;
             if a1 * a2 < 0. {
                 let v = (b1 * a2 - b2 * a1) / (a2 - a1);
                 for i1 in 0..m {
@@ -61,7 +67,10 @@ pub fn agarwal(p: Vec<Point>, q: Vec<Point>) -> Transform {
             }
         }
     }
+    println!("{:?}", &vertices);
     let (points, edges) = parry3d::transformation::convex_hull(&vertices);
+    println!("{:?}", &points);
+    println!("{:?}", &edges);
     let mut c2_vertices = vec![];
     for indices in edges.iter() {
         let mut d2_vertices = vec![];
@@ -82,10 +91,19 @@ pub fn agarwal(p: Vec<Point>, q: Vec<Point>) -> Transform {
         if d2_vertices.len() == 2 {
             let (x1, y1) = d2_vertices[0];
             let (x2, y2) = d2_vertices[1];
+            // dbg!(&[x1, y1, x2, y2]);
             let d = x1 * y2 - x2 * y1;
             c2_vertices.push(((y2 - y1) / d, (x1 - x2) / d))
         }
     }
+    println!("{:?}", &c2_vertices);
+    println!(
+        "{:?}",
+        c2_vertices
+            .iter()
+            .max_by_key(|&(s, t)| OrderedFloat(s * s + t * t))
+            .unwrap()
+    );
     Transform {
         s: 1.,
         t: 0.,
